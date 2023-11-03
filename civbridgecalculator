@@ -1,0 +1,1136 @@
+import matplotlib.pyplot as plt 
+import math
+
+x = int(input("x = "))
+P = int(input("P = "))
+
+
+def SFD(x, P):
+  """Calculate critical SFD values"""
+  global a_y, b_y, SFD_coords, SFD_x_coords
+  SFD_x_coords = [0, 0, x+52, x+52, x+228, x+228, x+392, x+392, x+568, x+568, x+732, x+732, x+908, x+908, 1200, 1200]
+
+  a_y = (720*P-P*x)/1200
+  b_y = (480*P + P*x)/1200
+  SFD_coords = [0]
+  
+  for i in range(7):
+    y_SFD = a_y - (i*(P/6))
+    SFD_coords.append(y_SFD)
+    SFD_coords.append(y_SFD)
+
+  SFD_coords.append(0)
+
+def SFD_graph(x, P):
+  """Graph SFD"""
+  global SFD_x_coords, SFD_coords
+  SFD(x,P)
+  plt.plot(SFD_x_coords, SFD_coords, "r-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Shear Force Diagram")
+  plt.axhline(0)
+  plt.show()
+  print(SFD_coords)
+
+def BMD(x, P):
+  "Calculate critical BMD values"
+  global a_y, b_y, BMD_coords, BMD_x_coords
+  BMD_x_coords = [0, x+52, x+228, x+392, x+568, x+732, x+908, 1200]
+
+  BMD_coords = [0]
+  for i in range(1,7):
+    BMD_coords.append((SFD_coords[i*2]*(BMD_x_coords[i]-BMD_x_coords[i-1])+BMD_coords[i-1]))
+  BMD_coords.append(0)
+
+
+
+
+def BMD_graph(x, P):
+  global BMD_x_coords, BMD_coords
+  BMD(x, P)
+  plt.plot(BMD_x_coords, BMD_coords, "k-")
+  plt.axhline(0)
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (N)")
+  plt.title("Bending Moment Diagram")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+def y_values():
+  """Calculate values for every single point on the SFD and BMD and store in list SFD_all and BMD_all"""
+  global SFD_coords, SFD_x_coords, BMD_coords, BMD_x_coords, SFD_all, BMD_all
+  SFD_all = []
+  BMD_all = []
+  for i in range(1201):
+    for j in range(1, len(SFD_x_coords)):
+      if i<SFD_x_coords[j] and i>SFD_x_coords[j-1]:
+        SFD_all.append((SFD_coords[j]))
+        break
+      elif i==0:
+        SFD_all.append(0)
+        break
+      elif i==SFD_x_coords[j]:
+        SFD_all.append((SFD_coords[j]))
+        break
+  SFD_all.append(0)
+  
+  BMD_total = 0
+  for i in range(1202):
+    BMD_total += SFD_all[i]
+    BMD_all.append(BMD_total)
+    
+
+  
+
+def max1():
+  """Create lists called SFD_final and BMD_final that hold the max shear force and bending moment values for each point on the bridge (x in mm)"""
+  global SFD_final, BMD_final, x_vals
+  SFD_final = []
+  BMD_final = []
+  x_vals = []
+  for i in range(1202):
+    SFD_final.append(0)
+    BMD_final.append(0)
+    x_vals.append(i)
+  for x in range(241):
+    SFD(x,400)
+    BMD(x, 400)
+    y_values()
+    for y in range(1202):
+      if abs(SFD_all[y])>(SFD_final[y]):
+        SFD_final[y] = abs(SFD_all[y])
+      if abs(BMD_all[y]) > BMD_final[y]:
+        BMD_final[y] = abs(BMD_all[y])
+
+  plt.plot(x_vals, SFD_final, "r-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Shear Force Capacity")
+  plt.axhline(0)
+  plt.show()
+
+  plt.plot(x_vals, BMD_final, "b-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Bending Moment Capacity")
+  plt.gca().invert_yaxis()
+  plt.axhline(0)
+  plt.show()
+
+    
+
+"""-----------------------------------------------------------"""
+#Call on max1 to find max BMD and SFD values for each point
+max1()
+
+
+max_moment = 0
+max_x = 0
+
+max_shear = 0
+max_x_2 = 0
+
+#FIND POINTS WHERE MAX MOMENT AND MAX SHEAR OCCUR FOR HAND CALCULATION PURPOSES
+for x in range(241):
+  SFD_x_coords = [0, 0, x+52, x+52, x+228, x+228, x+392, x+392, x+568, x+568, x+732, x+732, x+908, x+908, 1200, 1200]
+  BMD_x_coords = [0, x+52, x+228, x+392, x+568, x+732, x+908, 1200]
+  SFD(x, 400)
+  BMD(x, 400)
+
+  for y in SFD_coords:
+    if y > max_shear:
+      max_shear = y
+      max_x_2 = x
+  
+  for y in BMD_coords:
+    if y > max_moment:
+      max_moment = y
+      max_x = x
+
+print("max_x_2, max_shear = ", max_x_2, max_shear)
+print("max_x, max_moment = ", max_x, max_moment)
+
+
+"""The lists below show the parameters of each cross section for our various iterations"""
+# Params is the general list; each nested list indicates the [base, height, y from bottom to centroid of member] for a particular member of the cross section. 
+#Design 0: 
+#params = [[80, 1.27, 0.635], [1.27, 73.73, 38.135], [1.27, 73.73, 38.135], [5, 1.27, 74.365], [5, 1.27, 74.365], [100, 1.27, 75.635]]
+
+#Design 1: 
+#params = [[80, 1.27, 0.635], [1.27, 100, 51.27], [1.27, 100, 51.27], [5, 1.27, 74.365+26.27], [5, 1.27, 74.365+26.27], [100, 1.27, 75.635+26.27]]
+
+#Design 2: params = [[80, 1.27, 0.635], [1.27, 100, 51.27], [1.27, 100, 51.27], [5, 1.27, 74.365+26.27], [5, 1.27, 74.365+26.27], [120, 1.27, 75.635+26.27]]
+
+#Design 3: params = [[80, 1.27, 0.635], [1.27, 100, 51.27], [1.27, 100, 51.27], [5, 1.27, 101.27-0.635], [5, 1.27, 101.27-.635], [140, 1.27, 101.27+.635]]
+
+#Design 4: params = [[80, 1.27, 0.635], [1.27, 120, 61.27], [1.27, 120, 61.27], [5, 1.27, 121.27-0.635], [5, 1.27, 121.27-0.635], [140, 1.27, 121.27+0.635], [5, 1.27, 1.27+0.635], [5, 1.27, 1.27+0.635]]
+
+#new design 4 : params = [[1.27, 175, 87.5], [1.27, 175, 87.5], [5, 1.27, 87.5-.635], [5, 1.27, 87.5-.635], [140, 1.27, 175.635]]
+
+
+#new design 5: params = [[1.27, 175, 87.5], [1.27, 175, 87.5], [5, 1.27, 175-.635], [5, 1.27, 175-.635], [100, 1.27, 175.635]]
+
+
+#new design 6: params = [[1.27, 175, 87.5], [1.27, 175, 87.5], [5, 1.27, 175-.635], [5, 1.27, 175-.635], [100, 1.27, 175.635], [20, 1.27, 175-.635], [20, 1.27, 175-.635]]
+
+
+#Design idk: params = [[1.27, 175, 87.5], [1.27, 175, 87.5], [5, 2.54, 175-1.27], [5, 2.54, 175-1.27], [100, 1.27, 175.635], [20, 2.54, 175-1.27], [20, 2.54, 175-1.27]]
+
+
+#new design 7
+
+
+params2 = [[1.27, 175, 87.5+.635], [1.27, 175, 87.5+.635], [5, 1.27, 175-1.27-.635+.635], [5, 1.27, 175-1.27-.635+.635], [5, 1.27, 175], [5, 1.27, 175], [100, 1.27, 175.635+0.635], [20, 1.27, 175], [20, 1.27, 175], [80, 1.27, .635]]
+params = [[1.27, 175, 87.5], [1.27, 175, 87.5], [5, 1.27, 175-1.27-.635], [5, 1.27, 175-1.27-.635], [5, 1.27, 175-.635], [5, 1.27, 175-.635], [100, 1.27, 175.635], [20, 1.27, 175-.635], [20, 1.27, 175-.635]]
+
+#params = [[1.27, 175, 87.5], [1.27, 175, 87.5], [5, 1.27, 175-0.635], [5, 1.27, 175-.635], [100, 1.27, 175.635], [20, 1.27, 175-0.635], [20, 1.27, 175-0.635], [1.27, 25, 1], [1.27, 25, 161.23]]
+
+
+"""The code below Calculates Sectional Properties (for what to do with partial cross sections see function: "cross_sec_2" """
+#ybar. location of centroidal axis from the bottom
+
+ybar =  0
+numerator = 0
+denominator = 0
+for lst in params:
+  numerator += lst[0] * lst[1] * lst[2]
+  denominator += lst[0] * lst[1]
+ybar = numerator / denominator 
+
+print("ybar = ", ybar)
+
+# I
+I = 0
+for lst in params:
+  I += (lst[0]*((lst[1])**3)/12) + lst[0]*lst[1]*(abs(ybar-lst[2])**2)
+print("I = ",I)
+
+#Q at centroidal axes
+Qcent = 0
+b = 0
+
+for lst in params:
+  top = lst[2] + (lst[1]/2)
+  bottom = lst[2] - (lst[1]/2)
+  if bottom < ybar:
+    if top <= ybar:
+      Qcent += lst[0]*lst[1]*(abs(ybar-lst[2]))
+    else:
+      cent = ((ybar-bottom)/2)+bottom
+      Qcent += lst[0]*(abs(ybar-bottom))*(abs(ybar-cent))
+    if top == ybar or ((ybar > bottom) and (ybar < top)):
+      b+= lst[0]
+    
+print("Qcent = ", Qcent)
+
+
+#Q at glue location
+Qglue = 0
+bglue = 0
+glue_joint_height = 175
+
+for lst in params:
+  top = lst[2] + (lst[1]/2)
+  bottom = lst[2] - (lst[1]/2)
+  
+  if top == glue_joint_height:
+    bglue += lst[0]
+  if bottom < glue_joint_height:
+    if top <= glue_joint_height and top <=ybar:
+      Qglue += lst[0]*lst[1]*(abs(ybar-lst[2]))
+    elif top <= glue_joint_height and top > ybar and bottom < ybar:
+      length = ybar-bottom
+      Qglue -= lst[0]*(top-ybar)*(abs(((top-ybar)/2)))
+      Qglue += lst[0]*(ybar-bottom)*(abs((length/2)))
+    elif top <= glue_joint_height and top > ybar and bottom >= ybar:  
+      
+       Qglue -= lst[0]*lst[1]*(abs(ybar-lst[2]))
+    
+
+print("Qglue = ", Qglue)
+
+#4. Calculate Maximum Applied Stress (for FOS purposes)
+
+max_m = max(BMD_final)
+max_height = 0
+height_of_member = 0
+for lst in params:
+  if lst[2] > max_height:
+    max_height = lst[2]
+    height_of_member = lst[1]
+total_height = max_height + (height_of_member/2)
+
+S_top_2 = (max_m * (total_height - ybar)) / I
+S_bot_2 = (max_m * ybar) / I
+
+
+
+print("S_top = ", S_top_2)
+
+print("S_bot = ", S_bot_2)
+
+
+  
+def S_top(x):
+  """Calculate applied stress at top (where beam is in compression) for each point"""
+  global ybar, I, BMD_final, total_height
+  return ((BMD_final[x] * (total_height - ybar)) / I)
+
+def S_bot(x):
+  """Calculate applied stress at bottom (where beam is in tension) for each point"""
+  global ybar, I, BMD_final
+  return ((BMD_final[x] * ybar) / I)
+  
+
+
+T_cent_max = (240* Qcent)/(I*b)
+T_glue_max = (240* Qglue)/(I*bglue)
+
+print("T_cent = ", T_cent_max)
+
+print("T_glue = ", T_glue_max)
+
+def t_cent(x):
+  """Calculate maximum T_cent for each point on bridge"""
+  global SFD_final, Qcent, I, b
+  return (SFD_final[x]*Qcent)/(I*b)
+
+def t_glue(x): 
+  """Calculate maximum T_glue for each point on bridge"""
+  global SFD_final, Qglue, I, bglue
+  return (SFD_final[x]*Qglue)/(I*bglue)
+  
+#-----------------------------------------------------------
+# GIVENS:
+sigma_tens = 30
+sigma_comp = 6
+shear_max = 4
+glue_shear_max = 2
+#------------------------------------------------------------
+def sigmabuck1(t, b):
+  """Calculate failure stress for thin plate buckling case 1"""
+  return((4*((math.pi)**2)*4000)/(12*(1-(0.2**2)))*(t/b)**2)
+
+def sigmabuck2(t, b):
+  """Calculate failure stress for thin plate buckling case 2"""
+  return((0.425*(math.pi)**2)*4000)/(12*(1-(0.2**2)))*((2*t/b)**2)
+
+def sigmabuck3(t, b):
+  """Calculate failure stress for thin plate buckling case 3"""
+  return((6*((math.pi)**2)*4000)/(12*(1-(0.2**2)))*(t/b)**2)
+
+def shearbuck(t, b, a):
+  """Calculate failure stress for shear buckling (case 4)"""
+  return(((5*((math.pi)**2)*4000)/(12*(1-(0.2**2))))*((t/b)**2+(t/a)**2))
+
+
+#-----------------------------------------------------------
+# FACTORS OF SAFETY FUNCTIONS
+
+t = 1.27
+b1 =  60-1.27
+b2 = 20+(1.27/2)
+b3 = 175-ybar
+b_s = 175-.635
+a = 150
+
+'''
+
+t = 1.27
+b1 =  80-1.27
+b2 = 10+(1.27/2)
+b3 = 75-ybar
+b_s = 75-.635
+a = 400
+'''
+
+
+
+
+
+
+def FOS_tension(S_bot_2):
+  """Calculate FOS for tension"""
+  global sigma_tens
+  if S_bot_2 != 0:
+    return sigma_tens/S_bot_2
+
+def FOS_compression(S_top_2):
+  """Calculate FOS for compression"""  
+  global sigma_comp
+  if S_top_2 != 0:
+    return sigma_comp / S_top_2
+
+def FOS_buck1(t, b1, S_top_2):
+  """Calculate FOS for thin plate buckling case 1"""  
+  if S_top_2 != 0:
+    return sigmabuck1(t, b1) / S_top_2
+  
+def FOS_buck2(t, b2, S_top_2):
+  """Calculate FOS for thin plate buckling case 2"""  
+  if S_top_2 != 0:
+    return sigmabuck2(t, b2) / S_top_2
+
+def FOS_buck3(t, b3, S_top_2):
+  """Calculate FOS for thin plate buckling case 3"""  
+  if S_top_2 != 0:
+    return sigmabuck3(t, b3) / S_top_2
+
+def FOS_shear(T_cent):
+  """Calculate FOS for shear buckling (case 4)"""  
+  global shear_max
+  return shear_max / T_cent
+
+def FOS_glue(T_glue):
+  """Calculate FOS for stress in glue"""  
+  global glue_shear_max
+  return glue_shear_max / T_glue
+
+def FOS_shear_buck(t, b_s, a, T_cent, x):
+  """Calculate FOS for shear buckling in beam"""
+  return shearbuck(t,b_s,a) / T_cent
+
+
+
+def Mf_tens():
+  """Graph bending moment envelope for tensile stress"""
+  global BMD_final, x_vals, BMD_all
+  Mf_tens = [0]
+  min_tens = FOS_tension(S_bot(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_tension(S_bot(x))*BMD_final[x])
+    if FOS_tension(S_bot(x)) < min_tens:
+      min_tens = FOS_tension(S_bot(x))
+
+  Mf_tens.append(0)
+  print("FOS_tension = ", min_tens)
+  neg_Mf_tens = []
+  for x in Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")  
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Tension Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+def Mf_comp():
+  """Graph bending moment envelope for compressive stress - single cross section"""
+  global BMD_final, x_vals, BMD_all
+  Mf_comp = [0]
+  min_tens = FOS_compression(S_top(1))
+  for x in range(1, 1201):
+    Mf_comp.append(FOS_compression(S_top(x))*BMD_final[x])
+    if FOS_compression(S_top(x)) < min_tens:
+      min_tens = FOS_compression(S_top(x))
+
+  Mf_comp.append(0)
+  neg_Mf_comp = []
+  for x in Mf_comp:
+    neg_Mf_comp.append(-1*x)
+  print("FOS_compression = ", min_tens)
+  plt.plot(x_vals, Mf_comp, "r-")
+  plt.plot(x_vals, neg_Mf_comp, "r-")
+
+  plt.axhline(0)
+  
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Compression Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+
+
+
+def Vf_shear():
+  """Graph shear force envelope for shear stress - single cross section"""
+  global SFD_final, x_vals, SFD_all
+  Mf_tens = [0]
+  min_tens = FOS_shear(t_cent(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_shear(t_cent(x))*SFD_final[x])
+    if FOS_shear(t_cent(x)) < min_tens:
+      min_tens = FOS_shear(t_cent(x))
+
+  Mf_tens.append(0)
+  print("FOS_shear = ", min_tens)
+  neg_Mf_tens = []
+  for x in Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, SFD_all, "k-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Matboard Shear Failure")
+  plt.show()
+
+def Vf_glue():
+  """Graph shear force envelope for glue joints - single cross section"""
+  global SFD_final, x_vals, SFD_all
+  Mf_tens = [0]
+  min_tens = FOS_glue(t_glue(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_glue(t_glue(x))*SFD_final[x])
+    if FOS_glue(t_glue(x)) < min_tens:
+      min_tens = FOS_glue(t_glue(x))
+
+  Mf_tens.append(0)
+  print("FOS_glue = ", min_tens)
+  neg_Mf_tens = []
+  for x in Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, SFD_all, "k-")
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Matboard Glue Failure")
+  plt.show()
+
+
+def Mf_buck1():
+  """Graph bending moment envelope for thin plate buckling case 1 - single cross section"""
+  global BMD_final, x_vals, t, b1, BMD_all
+  Mf_tens = [0]
+  min_tens = FOS_buck1(t, b1, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_buck1(t, b1, S_top(x))*BMD_final[x])
+    if FOS_buck1(t, b1, S_top(x)) < min_tens:
+      min_tens = FOS_buck1(t, b1, S_top(x))
+
+  Mf_tens.append(0)
+  print("FOS_buck1 = ", min_tens)
+  neg_Mf_tens = []
+  for x in Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+  
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Buck Type 1 Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+def Mf_buck2():
+  """Graph bending moment envelope for thin plate buckling case 2 - single cross section"""
+  global BMD_final, x_vals, t, b2, BMD_all
+  Mf_tens = [0]
+  min_tens = FOS_buck2(t, b2, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_buck2(t, b2, S_top(x))*BMD_final[x])
+    if FOS_buck2(t, b2, S_top(x)) < min_tens:
+      min_tens = FOS_buck2(t, b2, S_top(x))
+
+  Mf_tens.append(0)
+  print("FOS_buck2 = ", min_tens)
+  neg_Mf_tens = []
+  for x in Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Buck Type 2 Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+def Mf_buck3():
+  """Graph bending moment envelope for thin plate buckling case 3 - single cross section"""
+  global BMD_final, x_vals, t, b3, BMD_all
+  Mf_tens = [0]
+  min_tens = FOS_buck3(t, b3, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_buck3(t, b3, S_top(x))*BMD_final[x])
+    if FOS_buck3(t, b3, S_top(x)) < min_tens:
+      min_tens = FOS_buck3(t, b3, S_top(x))
+
+  Mf_tens.append(0)
+  print("FOS_buck3 = ", min_tens)
+  neg_Mf_tens = []
+  for x in Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.plot(x_vals, BMD_final, "k-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Buck Type 3 Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+  
+def Vf_buckV():
+  """Graph shear force envelope for shear buckling (case 4) - single cross section"""
+  global SFD_final, x_vals, t, b_s, a, SFD_all
+  
+  Mf_tens = [0]
+  min_tens = FOS_shear_buck(t, b_s, a, t_cent(1),1)
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_shear_buck(t, b_s, a, t_cent(x), x)*SFD_final[x])
+    if FOS_shear_buck(t, b_s, a, t_cent(x), x) < min_tens:
+      min_tens = FOS_shear_buck(t, b_s, a, t_cent(x), x)
+
+  Mf_tens.append(0)
+  print("FOS_shear_buck = ", min_tens)
+  neg_Mf_tens = []
+  for x in Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, SFD_all, "k-")
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Matboard Shear Buckling Failure")
+  plt.show()
+  
+
+"""----------------------------------------------------------"""
+#THIS NEXT SECTION IS ONLY TO BE USED IF PARTIAL CROSS SECTIONS APPLY (LINES 650-1114)...OTHERWISE SKIP TO LINE 1115
+def cross_sec_2(params, glue_joint_height):
+  """Calculate sectional properties for other cross sections"""
+  global ybar, I, Qglue, Qcent  
+  ybar =  0
+  numerator = 0
+  denominator = 0
+  for lst in params:
+    numerator += lst[0] * lst[1] * lst[2]
+    denominator += lst[0] * lst[1]
+  ybar = numerator / denominator 
+  
+  print("ybar = ", ybar)
+  
+  # I
+  I = 0
+  for lst in params:
+    I += (lst[0]*((lst[1])**3)/12) + lst[0]*lst[1]*(abs(ybar-lst[2])**2)
+  print("I = ",I)
+  #Q at centroidal axes
+  
+  Qcent = 0
+  b = 0
+  
+  for lst in params:
+    top = lst[2] + (lst[1]/2)
+    bottom = lst[2] - (lst[1]/2)
+    if bottom < ybar:
+      if top <= ybar:
+        Qcent += lst[0]*lst[1]*(abs(ybar-lst[2]))
+      else:
+        cent = ((ybar-bottom)/2)+bottom
+        Qcent += lst[0]*(abs(ybar-bottom))*(abs(ybar-cent))
+      if top == ybar or ((ybar > bottom) and (ybar < top)):
+        b+= lst[0]
+      
+  print("Qcent = ", Qcent)
+  
+
+  #Q at glue location
+  Qglue = 0
+  bglue = 0
+  
+  for lst in params:
+    top = lst[2] + (lst[1]/2)
+    bottom = lst[2] - (lst[1]/2)
+    
+    if top == glue_joint_height:
+      bglue += lst[0]
+    if bottom < glue_joint_height:
+      if top <= glue_joint_height and top <=ybar:
+        #Qglue += lst[0]*lst[1]*(abs(glue_joint_height-((top-bottom)/2 + bottom)))
+        
+        Qglue += lst[0]*lst[1]*(abs(ybar-lst[2]))
+      elif top <= glue_joint_height and top > ybar and bottom < ybar:
+        length = ybar-bottom
+        Qglue -= lst[0]*(top-ybar)*(abs(((top-ybar)/2)))
+        Qglue += lst[0]*(ybar-bottom)*(abs((length/2)))
+      elif top <= glue_joint_height and top > ybar and bottom >= ybar:  
+        
+         Qglue -= lst[0]*lst[1]*(abs(ybar-lst[2]))
+      
+  
+  print("Qglue = ", Qglue)
+  
+
+def Mf_tens_2():
+  """Graph bending moment envelope for tensile stress - multiple cross sections"""
+  global BMD_final, x_vals, params2, params, BMD_all
+  cross_sec_2(params, 175)
+  Mf_tens = [0]
+  min_tens = FOS_tension(S_bot(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_tension(S_bot(x))*BMD_final[x])
+    if FOS_tension(S_bot(x)) < min_tens:
+      min_tens = FOS_tension(S_bot(x))
+
+  Mf_tens.append(0)
+  print("FOS_tension = ", min_tens)
+
+  cross_sec_2(params2, 175.635)
+  Mf_tens2 = [0]
+  min_tens2 = FOS_tension(S_bot(1))
+  for x in range(1, 1201):
+    Mf_tens2.append(FOS_tension(S_bot(x))*BMD_final[x])
+    if FOS_tension(S_bot(x)) < min_tens2:
+      min_tens2 = FOS_tension(S_bot(x))
+
+  Mf_tens2.append(0)
+  print("FOS_tension = ", min_tens)
+
+  final_Mf_tens = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_tens.append(Mf_tens2[x])
+    else:
+      final_Mf_tens.append(Mf_tens[x])
+  
+  neg_Mf_tens = []
+  for x in final_Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, final_Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")
+  plt.axhline(0)
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Tension Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+def Mf_comp_2():
+  """Graph bending moment envelope for compressive stress - multiple cross section"""
+
+  global BMD_final, x_vals, params, params2, BMD_all
+  cross_sec_2(params, 175)
+  Mf_comp = [0]
+  min_tens = FOS_compression(S_top(1))
+  for x in range(1, 1201):
+    Mf_comp.append(FOS_compression(S_top(x))*BMD_final[x])
+    if FOS_compression(S_top(x)) < min_tens:
+      min_tens = FOS_compression(S_top(x))
+
+  Mf_comp.append(0)
+
+  cross_sec_2(params2, 175.635)
+  Mf_comp2 = [0]
+  min_tens2 = FOS_compression(S_top(1))
+  for x in range(1, 1201):
+    Mf_comp2.append(FOS_compression(S_top(x))*BMD_final[x])
+    if FOS_compression(S_top(x)) < min_tens2:
+      min_tens2 = FOS_compression(S_top(x))
+
+  Mf_comp2.append(0)
+  print("FOS_compression = ", min_tens)
+  final_Mf_comp = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_comp.append(Mf_comp2[x])
+    else:
+      final_Mf_comp.append(Mf_comp[x])
+  
+  neg_Mf_comp = []
+  for x in final_Mf_comp:
+    neg_Mf_comp.append(-1*x)
+  plt.plot(x_vals, final_Mf_comp, "r-")
+  plt.plot(x_vals, neg_Mf_comp, "r-")
+
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")  
+  plt.axhline(0)
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Compression Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+
+
+
+def Vf_shear_2():
+  """Graph shear force envelope for shear stress - multiple cross sections"""
+  global SFD_final, x_vals, params, params2, SFD_all
+  cross_sec_2(params, 175)
+  Mf_tens = [0]
+  min_tens = FOS_shear(t_cent(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_shear(t_cent(x))*SFD_final[x])
+    if FOS_shear(t_cent(x)) < min_tens:
+      min_tens = FOS_shear(t_cent(x))
+
+  Mf_tens.append(0)
+  print("FOS_shear = ", min_tens)
+
+  cross_sec_2(params2, 175.635)
+  Mf_tens2 = [0]
+  min_tens2 = FOS_shear(t_cent(1))
+  for x in range(1, 1201):
+    Mf_tens2.append(FOS_shear(t_cent(x))*SFD_final[x])
+    if FOS_shear(t_cent(x)) < min_tens2:
+      min_tens2 = FOS_shear(t_cent(x))
+
+  Mf_tens2.append(0)
+  
+  final_Mf_tens = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_tens.append(Mf_tens2[x])
+    else:
+      final_Mf_tens.append(Mf_tens[x])
+  
+  neg_Mf_tens = []
+  for x in final_Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, final_Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, SFD_all, "k-")
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Matboard Shear Failure")
+  plt.show()
+
+def Vf_glue_2():
+  """Graph shear force envelope for glue joints -  multiple cross sections"""
+  global SFD_final, x_vals, params, params2, SFD_all
+  cross_sec_2(params, 175)
+  Mf_tens = [0]
+  min_tens = FOS_glue(t_glue(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_glue(t_glue(x))*SFD_final[x])
+    if FOS_glue(t_glue(x)) < min_tens:
+      min_tens = FOS_glue(t_glue(x))
+
+  Mf_tens.append(0)
+  print("FOS_glue = ", min_tens)
+  cross_sec_2(params2, 175.635)
+  Mf_tens2 = [0]
+  min_tens2 = FOS_glue(t_glue(1))
+  for x in range(1, 1201):
+    Mf_tens2.append(FOS_glue(t_glue(x))*SFD_final[x])
+    if FOS_glue(t_glue(x)) < min_tens2:
+      min_tens2 = FOS_glue(t_glue(x))
+
+  Mf_tens2.append(0)
+  final_Mf_tens = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_tens.append(Mf_tens2[x])
+    else:
+      final_Mf_tens.append(Mf_tens[x])
+  
+  neg_Mf_tens = []
+  for x in final_Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, final_Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  plt.axhline(0)
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, SFD_all, "k-")
+
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Matboard Glue Failure")
+  plt.show()
+
+
+def Mf_buck1_2():
+  """Graph bending moment envelope for thin plate buckling case 1 - multiple cross sections"""
+
+  global BMD_final, x_vals, t, b1, params, params2, BMD_all
+  cross_sec_2(params, 175)
+  Mf_tens = [0]
+  min_tens = FOS_buck1(t, b1, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_buck1(t, b1, S_top(x))*BMD_final[x])
+    if FOS_buck1(t, b1, S_top(x)) < min_tens:
+      min_tens = FOS_buck1(t, b1, S_top(x))
+
+  Mf_tens.append(0)
+  print("FOS_buck1 = ", min_tens)
+
+  cross_sec_2(params2, 175.635)
+  Mf_tens2 = [0]
+  min_tens2 = FOS_buck1(t, b1, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens2.append(FOS_buck1(t, b1, S_top(x))*BMD_final[x])
+    if FOS_buck1(t, b1, S_top(x)) < min_tens2:
+      min_tens2 = FOS_buck1(t, b1, S_top(x))
+
+  Mf_tens2.append(0)
+  final_Mf_tens = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_tens.append(Mf_tens2[x])
+    else:
+      final_Mf_tens.append(Mf_tens[x])
+  
+  neg_Mf_tens = []
+  for x in final_Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, final_Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+  
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")
+  plt.axhline(0)
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Buck Type 1 Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+def Mf_buck2_2():
+  """Graph bending moment envelope for thin plate buckling case 2 - multiple cross sections"""
+
+  global BMD_final, x_vals, t, b2, params, params2, BMD_all
+  cross_sec_2(params, 175)
+  Mf_tens = [0]
+  min_tens = FOS_buck2(t, b2, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_buck2(t, b2, S_top(x))*BMD_final[x])
+    if FOS_buck2(t, b2, S_top(x)) < min_tens:
+      min_tens = FOS_buck2(t, b2, S_top(x))
+
+  Mf_tens.append(0)
+  print("FOS_buck2 = ", min_tens)
+  cross_sec_2(params2, 175.635)
+  Mf_tens2 = [0]
+  min_tens2 = FOS_buck2(t, b2, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens2.append(FOS_buck2(t, b2, S_top(x))*BMD_final[x])
+    if FOS_buck2(t, b2, S_top(x)) < min_tens2:
+      min_tens2 = FOS_buck2(t, b2, S_top(x))
+
+  Mf_tens2.append(0)
+  final_Mf_tens = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_tens.append(Mf_tens2[x])
+    else:
+      final_Mf_tens.append(Mf_tens[x])
+  
+  neg_Mf_tens = []
+  for x in final_Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, final_Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")  
+  plt.axhline(0)
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Buck Type 2 Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+def Mf_buck3_2():
+  """Graph bending moment envelope for thin plate buckling case 3 - multiple cross sections"""
+
+  global BMD_final, x_vals, t, b3, params, params2, BMD_all
+  cross_sec_2(params, 175)
+  Mf_tens = [0]
+  min_tens = FOS_buck3(t, b3, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_buck3(t, b3, S_top(x))*BMD_final[x])
+    if FOS_buck3(t, b3, S_top(x)) < min_tens:
+      min_tens = FOS_buck3(t, b3, S_top(x))
+
+  Mf_tens.append(0)
+  print("FOS_buck3 = ", min_tens)
+  cross_sec_2(params2, 175.635)
+  Mf_tens2 = [0]
+  min_tens2 = FOS_buck3(t, b3, S_top(1))
+  for x in range(1, 1201):
+    Mf_tens2.append(FOS_buck3(t, b3, S_top(x))*BMD_final[x])
+    if FOS_buck3(t, b3, S_top(x)) < min_tens2:
+      min_tens2 = FOS_buck3(t, b3, S_top(x))
+
+  Mf_tens2.append(0)
+  final_Mf_tens = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_tens.append(Mf_tens2[x])
+    else:
+      final_Mf_tens.append(Mf_tens[x])
+  
+  neg_Mf_tens = []
+  for x in final_Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, final_Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, BMD_all, "k-")  
+  plt.axhline(0)
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Bending Moment (Nmm)")
+  plt.title("Matboard Buck Type 3 Failure")
+  plt.gca().invert_yaxis()
+  plt.show()
+
+
+  
+def Vf_buckV_2():
+  """Graph shear force envelope for shear buckling (case 4) - multiple cross sections"""
+  global SFD_final, x_vals, t, b_s, a, params, params2, SFD_all
+  cross_sec_2(params, 175)
+  Mf_tens = [0]
+  min_tens = FOS_shear_buck(t, b_s, a, t_cent(1),1)
+  for x in range(1, 1201):
+    Mf_tens.append(FOS_shear_buck(t, b_s, a, t_cent(x), x)*SFD_final[x])
+    if FOS_shear_buck(t, b_s, a, t_cent(x), x) < min_tens:
+      min_tens = FOS_shear_buck(t, b_s, a, t_cent(x), x)
+
+  Mf_tens.append(0)
+  print("FOS_shear_buck = ", min_tens)
+  cross_sec_2(params2, 175.635)
+  Mf_tens2 = [0]
+  min_tens2 = FOS_shear_buck(t, b_s, a, t_cent(1),1)
+  for x in range(1, 1201):
+    Mf_tens2.append(FOS_shear_buck(t, b_s, a, t_cent(x), x)*SFD_final[x])
+    if FOS_shear_buck(t, b_s, a, t_cent(x), x) < min_tens2:
+      min_tens2 = FOS_shear_buck(t, b_s, a, t_cent(x), x)
+
+  Mf_tens2.append(0)
+  final_Mf_tens = []
+  for x in range(1202):
+    if x <= 40 or x>1160:
+      final_Mf_tens.append(Mf_tens2[x])
+    else:
+      final_Mf_tens.append(Mf_tens[x])
+  
+  neg_Mf_tens = []
+  for x in final_Mf_tens:
+    neg_Mf_tens.append(-1*x)
+  plt.plot(x_vals, final_Mf_tens, "r-")
+  plt.plot(x_vals, neg_Mf_tens, "r-")
+
+  for x in range(241):
+    SFD(x, 400)
+    BMD(x, 400)
+    y_values()
+    plt.plot(x_vals, SFD_all, "k-")  
+    plt.axhline(0)
+
+  plt.xlabel("Distance, x, from point A (mm)")
+  plt.ylabel("Shear Force (N)")
+  plt.title("Matboard Shear Buckling Failure")
+  plt.show()
+  
+print("FOS_tension = ", FOS_tension(S_bot_2))
+print("FOS_compression = ", FOS_compression(S_top_2))
+print("FOS_buck1 = ", FOS_buck1(t, b1, S_top_2) )
+print("FOS_buck2 = ", FOS_buck2(t, b2, S_top_2))
+print("FOS_buck3 = ", FOS_buck3(t, b3, S_top_2))
+print("FOS_shear = ", FOS_shear(T_cent_max))
+print("FOS_glue = ", FOS_glue(T_glue_max))
+print("FOS_shear_buck = ", FOS_shear_buck(t, b_s, a, T_cent_max, -1))
+
+
+"""---------------------------------------------------------"""
+#CALL ON THE NECESSARY FUNCTIONS TO PRODUCE THE GRAPHS NEEDED (simply add a "_2" if working with partial cross sections)
+Mf_tens_2()
+Mf_comp_2()
+Vf_shear_2()
+Vf_glue_2()
+Mf_buck1_2()
+Mf_buck2_2()
+Mf_buck3_2()
+Vf_buckV_2()
+
